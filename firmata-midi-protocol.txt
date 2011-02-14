@@ -1,0 +1,203 @@
+Notes on the Firmata 2.2 wire protocol.
+Retrieved from "http://firmata.org/wiki/V2.2ProtocolDetails"
+
+/* This protocol uses the MIDI message format, but does not use the whole
+ * protocol.  Most of the command mappings here will not be directly usable in
+ * terms of MIDI controllers and synths.  It should co-exist with MIDI without
+ * trouble and can be parsed by standard MIDI interpreters.  Just some of the
+ * message data is used differently.
+ *
+ * MIDI format: http://www.harmony-central.com/MIDI/Doc/table1.html
+ * 
+ *                              MIDI       
+ * type                command  channel    first byte            second byte 
+ *----------------------------------------------------------------------------
+ * analog I/O message    0xE0   pin #      LSB(bits 0-6)         MSB(bits 7-13)
+ * digital I/O message   0x90   port       LSB(bits 0-6)         MSB(bits 7-13)
+ * report analog pin     0xC0   pin #      disable/enable(0/1)   - n/a -
+ * report digital port   0xD0   port       disable/enable(0/1)   - n/a -
+ *
+ * sysex start           0xF0   
+ * set pin mode(I/O)     0xF4              pin # (0-127)         pin state(0=in)
+ * sysex end             0xF7   
+ * protocol version      0xF9              major version         minor version
+ * system reset          0xFF
+ *
+ */
+/* SysEx-based commands (0x00-0x7F) are used for an extended command set.
+ *
+ * type                command  first byte       second byte      ...
+ *-----------------------------------------------------------------------------
+ * string                0x71   char *string ...
+ * firmware name/version 0x79   major version   minor version     char *name...
+ */
+
+[edit] Data Message Expansion
+
+/* two byte digital data format
+ * 0  digital data, 0x90-0x9F, (MIDI NoteOn, but different data format)
+ * 1  digital pins 0-6 bitmask
+ * 2  digital pins 7-13 bitmask 
+ */
+
+/* analog 14-bit data format
+ * 0  analog pin, 0xE0-0xEF, (MIDI Pitch Wheel)
+ * 1  analog least significant 7 bits
+ * 2  analog most significant 7 bits
+ */
+
+/* version report format
+ * -------------------------------------------------
+ * 0  version report header (0xF9) (MIDI Undefined)
+ * 1  major version (0-127)
+ * 2  minor version (0-127)
+ */
+
+[edit] Control Messages Expansion
+
+/* set pin mode
+ * 1  set digital pin mode (0xF4) (MIDI Undefined)
+ * 2  pin number (0-127)
+ * 3  state (INPUT/OUTPUT/ANALOG/PWM/SERVO, 0/1/2/3/4)
+ */
+
+/* toggle analogIn reporting by pin
+ * 0  toggle digitalIn reporting (0xC0-0xCF) (MIDI Program Change)
+ * 1  disable(0)/enable(non-zero) 
+ */
+
+/* toggle digital port reporting by port
+ * 0  toggle digital port reporting (0xD0-0xDF) (MIDI Aftertouch)
+ * 1  disable(0)/enable(non-zero) 
+ */
+
+/* request version report
+ * 0  request version report (0xF9) (MIDI Undefined)
+ */
+
+[edit] Sysex Message Format
+
+The idea for SysEx is to have a second command space using the first byte after the SysEx Start byte. The key difference is that the data can be of any size, rather than just one or two bytes for standard MIDI messages.
+
+/* Generic Sysex Message
+ * 0     START_SYSEX (0xF0)
+ * 1     sysex command (0x00-0x7F)
+ * x     between 0 and MAX_DATA_BYTES 7-bit bytes of arbitrary data
+ * last  END_SYSEX (0xF7)
+ */
+
+
+[edit] Query Firmware Name and Version
+
+The firmware name to be reported should be exactly the same as the name of the Arduino file, minus the .pde. So for Standard_Firmata.pde, the firmware name is: Standard_Firmata.
+
+/* Query Firmware Name and Version
+ * 0  START_SYSEX (0xF0)
+ * 1  queryFirmware (0x79)
+ * 2  END_SYSEX (0xF7)
+ */
+
+
+/* Receive Firmware Name and Version (after query)
+ * 0  START_SYSEX (0xF0)
+ * 1  queryFirmware (0x79)
+ * 2  major version (0-127)
+ * 3  minor version (0-127)
+ * 4  first 7-bits of firmware name
+ * 5  second 7-bits of firmware name
+ * x  ...for as many bytes as it needs)
+ * 6  END_SYSEX (0xF7)
+ */
+
+[edit] I2C
+
+/* I2C read/write request
+ * -------------------------------
+ * 0  START_SYSEX (0xF0) (MIDI System Exclusive)
+ * 1  I2C_REQUEST (0x76)
+ * 2  slave address (LSB)
+ * 3  slave address (MSB) + read/write and address mode bits
+      {7: always 0} + {6: reserved} + {5: address mode, 1 means 10-bit mode} +
+      {4-3: read/write, 00 => write, 01 => read once, 10 => read continuously, 11 => stop reading} +
+      {2-0: slave address MSB in 10-bit mode, not used in 7-bit mode}
+ * 4  data 0 (LSB)
+ * 5  data 0 (MSB)
+ * 6  data 1 (LSB)
+ * 7  data 1 (MSB)
+ * ...
+ * n  END_SYSEX (0xF7)
+ */
+
+/* I2C reply
+ * -------------------------------
+ * 0  START_SYSEX (0xF0) (MIDI System Exclusive)
+ * 1  I2C_REPLY (0x77)
+ * 2  slave address (LSB)
+ * 3  slave address (MSB)
+ * 4  register (LSB)
+ * 5  register (MSB)
+ * 6  data 0 LSB
+ * 7  data 0 MSB
+ * ...
+ * n  END_SYSEX (0xF7)
+ */
+
+/* I2C config
+ * -------------------------------
+ * 0  START_SYSEX (0xF0) (MIDI System Exclusive)
+ * 1  I2C_CONFIG (0x78)
+ * 2  Power pin settings (0:off or 1:on)
+ * 3  Delay in microseconds (LSB)
+ * 4  Delay in microseconds (MSB)
+ * ... user defined for special cases, etc
+ * n  END_SYSEX (0xF7)
+ */
+
+[edit] Sampling Interval
+
+/* Set sampling interval
+ * -------------------------------
+ * 0  START_SYSEX (0xF0) (MIDI System Exclusive)
+ * 1  SAMPLING_INTERVAL (0x7A)
+ * 2  sampling interval on the millisecond time scale (LSB)
+ * 3  sampling interval on the millisecond time scale (MSB)
+ * 4  END_SYSEX (0xF7)
+ */
+
+[edit] Servos
+
+This is the current proposal for adding Servo support based on feedback from Bjoern Hartmann, Shigeru Kobayashi, and Erik Sjodin. The core idea is to just add a "config" message, then use the SET_PIN_MODE message to attach/detach Servo support to a pin. This is how hardware PWM is currently handled. This would save space in the protocol by reusing the SET_PIN_MODE message, but the host software implementation could have a different interface, e.g. Arduino's attach() and detach().
+
+minPulse, maxPulse, and angle are all 14-bit unsigned integers. Angle is in degrees. The SERVO_CONFIG can be sent at any time to change the settings.
+
+/* servo config
+ * --------------------
+ * 0  START_SYSEX (0xF0)
+ * 1  SERVO_CONFIG (0x70)
+ * 2  pin number (0-127)
+ * 3  minPulse LSB (0-6)
+ * 4  minPulse MSB (7-13)
+ * 5  maxPulse LSB (0-6)
+ * 6  maxPulse MSB (7-13)
+ * 7  angle LSB (0-6)
+ * 8  angle MSB (7-13)
+ * 9  END_SYSEX (0xF7)
+ */
+
+This is just the standard SET_PIN_MODE message:
+
+/* set digital pin mode
+ * --------------------
+ * 1  set digital pin mode (0xF4) (MIDI Undefined)
+ * 2  pin number (0-127)
+ * 3  state (INPUT/OUTPUT/ANALOG/PWM/SERVO, 0/1/2/3/4)
+ */
+
+Then the normal ANALOG_MESSAGE data format is used to send data.
+
+/* write to servo, servo write is performed if the pins mode is SERVO
+ * ------------------------------
+ * 0  ANALOG_MESSAGE (0xE0-0xEF)
+ * 1  value lsb
+ * 2  value msb
+ */

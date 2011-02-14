@@ -1,0 +1,14 @@
+Reflexive::Firmata - an Asynchronous OO interface to serial Firmata devices
+
+Current status: Work in progress.  Committed to github and Gitorious
+to facilitate collaborative hacking.
+
+Community: irc.perl.org #reflex (for now)
+
+License: Unless otherwise specified, Same Terms as Perl Itself.  This
+may change.
+
+The repository contains some other-copyright files that are being used
+for reference.  Their code won't be incorporated in the released
+distribution, and the files will be removed from the repository once
+the Perl implementation is reasonably complete.

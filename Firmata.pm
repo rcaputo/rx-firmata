@@ -6,6 +6,8 @@ use strict;
 use Moose;
 extends 'Reflex::Base';
 
+use Carp qw(croak);
+
 has handle => ( isa => 'FileHandle', is => 'rw' );
 
 with 'Reflex::Role::Streaming' => { handle => 'handle' };
@@ -15,8 +17,10 @@ has buffer => ( isa => 'Str', is => 'rw', default => '' );
 sub on_handle_data {
 	my ($self, $args) = @_;
 
-	my $data    = $args->{data};
-	my $buffer  = $self->buffer() . $data;
+	my $data = $args->{data};
+	print "<-- raw: ", $self->hexify($data), "\n";
+
+	my $buffer = $self->buffer() . $data;
 
 	# TODO - Cheezy, slow.  Do better.
 
@@ -33,9 +37,7 @@ sub on_handle_data {
 		if ($buffer =~ s/^\xF0\x79(..)(.*?)\xF7//s) {
 			my ($maj, $min) = unpack("CC", $1);
 
-			# TODO - See String SysEx discussion.
-			my $string = $2;
-			$string =~ tr[\x00][]d;
+			my $string = $self->firmata_string_parse($2);
 			print "<-- version $maj.$min ($string)\n";
 
 			# Capabilities.
@@ -47,14 +49,7 @@ sub on_handle_data {
 		# String SysEx.
 
 		if ($buffer =~ s/^\xF0\x71(.*?)\xF7//s) {
-			my $string = $1;
-
-			# TODO - Actually the MSB of each string octet is in one of the
-			# bytes.  We should convert these 16bit characters to 14bit
-			# before displaying.  Ripping out the \x00s is just an expedient
-			# hack.
-
-			$string =~ tr[\x00][]d;
+			my $string = $self->firmata_string_parse($1);
 			print "<-- string: '$string'\n";
 			next;
 		}
@@ -95,11 +90,7 @@ sub on_handle_data {
 
 		if ($buffer =~ s/^\xF0(.)(.*?)\xF7//s) {
 			my $cmd = ord($1);
-
-			my $hex = $2;
-			$hex =~ s/([^ -~])/sprintf("<%02.2x>", ord($1))/seg;
-
-			printf "<-- sysex %02.2X '%s'\n", $cmd, $hex;
+			printf "<-- sysex %02.2X '%s'\n", $cmd, $self->hexify($2);
 			next;
 		}
 
@@ -139,12 +130,31 @@ sub on_handle_data {
 	}
 
 	$self->buffer($buffer);
+}
 
-	if (length $buffer) {
-		my $hex = $buffer;
-		$hex =~ s/(.)/sprintf("<%02.2x>", ord($1))/seg;
-		print "<-- raw: $hex\n";
+sub firmata_string_parse {
+	my ($self, $raw_string) = @_;
+
+	croak "string contains an odd number of octets" if length($raw_string) % 2;
+
+	# Some things are better left to C, eh?
+	my $cooked_string = "";
+	my (@raw_octets) = ($raw_string =~ /(.)/sg);
+	while (@raw_octets) {
+		my ($lsb, $msb) = splice @raw_octets, 0, 2;
+		$cooked_string .= chr( ((ord($msb) & 0x7f) << 7) | (ord($lsb) & 0x7F) );
 	}
+
+	return $cooked_string;
+}
+
+sub hexify {
+	my ($self, $data) = @_;
+
+	$data =~ s/(.)/sprintf("<%02.2x>", ord($1))/seg;
+	$data =~ s/(<[89a-fA-F][0-9a-fA-F]>)/\e[1m$1\e[0m/g;
+
+	return $data;
 }
 
 1;

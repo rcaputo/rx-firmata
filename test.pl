@@ -7,8 +7,15 @@ use Firmata;
 use Device::SerialPort;
 use Symbol qw(gensym);
 
+opendir(D, "/dev") or die $!;
+my @modems = grep /^cu.usbmodem/, readdir(D);
+closedir(D);
+
+die "Can't find a modem in /dev ...\n" if @modems < 1;
+die "Found too many modems in /dev: @modems\n" if @modems > 1;
+
 my $handle = gensym();
-my $port = tie(*$handle, "Device::SerialPort", "/dev/cu.usbmodem641") or die(
+my $port = tie(*$handle, "Device::SerialPort", "/dev/$modems[0]") or die(
 	"can't open port: $!"
 );
 

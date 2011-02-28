@@ -28,8 +28,26 @@ $port->write_settings();
 
 $|=1;
 
-my $f = Firmata->new(handle => $handle);
+my $device = Firmata->new(handle => $handle);
 
-#$f->put_handle("\x9C\x01\x00");
+while (defined( my $e = $device->next() )) {
 
-$f->run_all();
+	if ($e->{name} eq "version") {
+		# Request capabilities.
+		$device->put_handle("\xF0\x6B\xF7");
+		next;
+	}
+
+	if ($e->{name} eq "capabilities") {
+		$device->analog_in( 1 );
+		$device->analog_report( 1, 1 );
+		$device->sample(100);
+		next;
+	}
+
+	print "--- $e->{name}\n";
+	foreach my $key (sort keys %{$e->{arg}}) {
+		next if $key eq "_sender";
+		print "$key: $e->{arg}{$key}\n";
+	}
+}

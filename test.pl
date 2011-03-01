@@ -30,6 +30,19 @@ $|=1;
 
 my $device = Firmata->new(handle => $handle);
 
+# Blink back and forth between digital pins 12 and 13.
+
+my $pin = 0;
+use Reflex::Interval;
+my $blink = Reflex::Interval->new(
+	interval => 1,
+	auto_repeat => 1,
+	on_tick => sub {
+		$pin = !$pin || 0;
+		$device->digital_set(1, 16 * ($pin + 1));
+	},
+);
+
 while (defined( my $e = $device->next() )) {
 
 	if ($e->{name} eq "version") {
@@ -39,9 +52,26 @@ while (defined( my $e = $device->next() )) {
 	}
 
 	if ($e->{name} eq "capabilities") {
-		$device->analog_in( 1 );
-		$device->analog_report( 1, 1 );
+		#$device->analog_in( 1 );
+		#$device->analog_report( 1, 1 );
+
+		#$device->digital_report(0, 1);
+
+		# Pins 12 and 13 are digital output.
+		$device->digital_out(12);
+		$device->digital_out(13);
+
+		# Read digital input on pin 7.
+		# Wire one of pins 12 or 13 to pin 7, and watch it register input
+		# as that port lights up.
+
+		$device->digital_in(7);
+		$device->digital_report(0, 1 << 6);
+
+		# Some silly sample rate.
+		# It may only be for analog?
 		$device->sample(100);
+
 		next;
 	}
 

@@ -43,15 +43,15 @@ sub analog_report {
 	$self->put_handle($message);
 }
 
-# TODO - Digital Report isn't supported by the UNO Firmata 2.2 driver.
-# See the TODO in FirmataClass::sendDigital(byte pin, int value).
+# XXX - digital_report() works on ATMEGA ports, not discrete pins.
+# TODO - If we want a pin API, we need to remember which pins we're
+# polling, manipulate them as bits, and write the resulting bytes.
 
 sub digital_report {
 	my ($self, $port, $bool) = @_;
-	my $message = chr(0xD0 | ($port & 0x0F)) . chr((!!$bool) || 0);
+	my $message = chr(0xD0 | ($port & 0x0F)) . chr($bool & 0x7F);
 	$self->put_handle($message);
 }
-
 
 ### Set Pin Mode
 
@@ -101,8 +101,14 @@ sub sample {
 
 
 sub digital_set {
-	my ($self, $pin, $value) = @_;
-	my $message = chr( 0x90 | ($pin & 0x0F) ) . ($value ? "\x7F\x7F" : "\x00\x00");
+	my ($self, $port, $value) = @_;
+
+	my $message = (
+		chr( 0x90 | ($port & 0x0F) ) .
+		chr($value & 0x7F) .
+		chr(($value >> 7) & 0x7F)
+	);
+
 	$self->put_handle($message);
 }
 

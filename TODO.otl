@@ -1,85 +1,90 @@
-[_] 0% CPAN Release
-	[_] 0% Name the distribution
-	[_] 0% Rearrange modules into proper lib directory
-	[_] 0% Examples
-	[_] 0% Tests
-	[_] 0% Documentation
-[_] 31% Firmata Protocol
-	[_] 58% SysEx (\xF0...\xF7)
-		[X] 100% String response (\xF0\x71...\xF7).
-			[X] 100% Build 14-bit characters properly.
-				Currently just stripping \0 octets.
-				Cheap solution for ASCII, but the world's bigger.
-		[X] 100% Protocol Version (\xF9)
-			[X] 100% Parse it.
-			[X] 100% Save it in the object.
-			[X] 100% Accessor to query it.
-		[_] 0% Capabilities query (\xF0\x79...\xF7).
-			[_] 0% Define API to query capabilities.
-				Currently just sending the raw octets fromt test.pl.
-			[_] 0% Autosend request 
-				Unless asked not to, ask the device for its capabilities.
-		[_] 33% Capabilities response (\xF0\x6C...\xF7)
-			[X] 100% Parse it.
-			[_] 0% Represent each pin in an introspectable way.
-			[_] 0% Store pin capabilities in the object.
-	[_] 0% Define input/output methods based on capabilities.
-		[_] 0% How interesting might it be for device capabilities to define object APIs?
-			Moose::Meta can do this for us.
-			But... are the results elegant enough for us to care?
-		[_] 0% Define API for output methods.
-		[_] 0% Define API to query last input values.
-		[_] 0% Define callbacks (role/emit) for Firmata data.
-		[_] 0% Each port should have options for edge and level detection.
-			[_] 0% Should these options drive the Firmata firmware?
-	[_] 20% Analog I/O Message (\xE#..)
-		[X] 100% Parse them.
-		[_] 0% Store last values in the object.
-		[_] 0% Trigger edge events, if requested.
-		[_] 0% Trigger level events, if requested.
-		[_] 0% Enhance Firmata firmware to handle edge vs. level detection?
-			This has potential to reduce Firmata wire traffic.
-			[_] 0% Make a proposal.
-	[_] 20% Digital I/O Message (\x9#..)
-		[X] 100% Parse them.
-		[_] 0% Store last values in the object.
-		[_] 0% Trigger edge events, if requested.
-		[_] 0% Trigger level events, if requested.
-		[_] 0% Add support to UNO Firmata firmware?
-			Needs to be supported for us to receive it.
-			[_] 0% Currently unsupported within UNO Firmata 2.2 firmware?
-			[_] 0% Make a proposal?
-	[_] 50% Report analog pin (\xC#..)
-		[X] 100% Parse them.
-			Unnecessary however since this is an outbound command.
-		[X] 100% Create a strawman API to send the analog report command.
-			$device->analog_report(PORT, BOOL);
-		[_] 0% Settle upon a final API for this.
-		[_] 0% Validate port can perform the reqested action.
-	[_] 50% Report digital (\xD#..)
-		UNO Firmata 2.2 doesn't do anything with this.
-		[X] 100% Parse them.
-			Unnecessary however since this is an outbound command.
-		[X] 100% Create a strawman API to send the digital report command.
-			$device->digital_report(PORT, BOOL);
-		[_] 0% Settle upon a final API for this.
-		[_] 0% Validate port can perform the reqested action.
-	[_] 25% Set Pin Mode (\xF4..)
-		[X] 100% Strawman method to send these commands.
-			[X] 100% $device->digital_in(PORT);
-			[X] 100% $device->digital_out(PORT);
-			[X] 100% $device->analog_in(PORT);
-			[X] 100% $device->pwm_out(PORT);
-			[X] 100% $device->servo_out(PORT);
-		[_] 0% Settle on final APIs for this.
-		[_] 0% Store last values in the object.
-		[_] 0% Validate port can perform the reqested action.
-[_] 0% Additional API
-	[_] 0% Generic requirements
-		[_] 0% Pin commands must be validated against capabilities.
-	[_] 0% Pin naming
-		$device->pin_name( 13, "onboard_led" );
-		$device->pin_name( 13, undef );
-	[_] 0% Pin Status
-		[_] 0% $device->pin_get(13);
-		[_] 0% $device->pin_stream(13);
+[_] 11% CPAN Release
+	[_] 0% Packaging
+		[_] 0% Name the distribution
+		[_] 0% Rearrange modules into proper lib directory
+		[_] 0% Examples
+		[_] 0% Tests
+		[_] 0% Documentation
+	[_] 33% Firmata Protocol
+		[_] 58% SysEx (\xF0...\xF7)
+			[X] 100% String response (\xF0\x71...\xF7).
+				[X] 100% Build 14-bit characters properly.
+					Currently just stripping \0 octets.
+					Cheap solution for ASCII, but the world's bigger.
+			[X] 100% Protocol Version (\xF9)
+				[X] 100% Parse it.
+				[X] 100% Save it in the object.
+				[X] 100% Accessor to query it.
+			[_] 0% Capabilities query (\xF0\x79...\xF7).
+				[_] 0% Define API to query capabilities.
+					Currently just sending the raw octets fromt test.pl.
+				[_] 0% Autosend request 
+					Unless asked not to, ask the device for its capabilities.
+			[_] 33% Capabilities response (\xF0\x6C...\xF7)
+				[X] 100% Parse it.
+				[_] 0% Represent each pin in an introspectable way.
+				[_] 0% Store pin capabilities in the object.
+		[_] 0% Define input/output methods based on capabilities.
+			[_] 0% How interesting might it be for device capabilities to define object APIs?
+				Moose::Meta can do this for us.
+				But... are the results elegant enough for us to care?
+			[_] 0% Define API for output methods.
+			[_] 0% Define API to query last input values.
+			[_] 0% Define callbacks (role/emit) for Firmata data.
+			[_] 0% Each port should have options for edge and level detection.
+				[_] 0% Should these options drive the Firmata firmware?
+		[_] 20% Analog I/O Message (\xE#..)
+			[X] 100% Parse them.
+			[_] 0% Store last values in the object.
+			[_] 0% Trigger edge events, if requested.
+			[_] 0% Trigger level events, if requested.
+			[_] 0% Enhance Firmata firmware to handle edge vs. level detection?
+				This has potential to reduce Firmata wire traffic.
+				[_] 0% Make a proposal.
+		[_] 33% Digital I/O Message (\x9#..)
+			These are edge-detected events out of the Arduino.
+			[X] 100% Parse them.
+			[_] 0% Store last values in the object.
+			[_] 0% Allow code to query the last values.
+				This can simulate repeated values given a latch pin.
+		[_] 50% Report analog pin (\xC#..)
+			[X] 100% Parse them.
+				Unnecessary however since this is an outbound command.
+			[X] 100% Create a strawman API to send the analog report command.
+				$device->analog_report(PORT, BOOL);
+			[_] 0% Settle upon a final API for this.
+			[_] 0% Validate port can perform the reqested action.
+		[_] 50% Report digital (\xD#..)
+			[X] 100% Parse them.
+			[X] 100% Create a strawman API to send the digital report command.
+				$device->digital_report(PORT, MASK);
+			[_] 0% Settle upon a final API for this.
+				[_] 0% For reading bytes...
+					$device->digital_report(PORT, MASK);
+				[_] 0% For reading bits/switches...
+					$device->digital_report(PIN);
+				[_] 0% Define semantics for mixed-mode reading.
+			[_] 0% Validate port can perform the reqested action.
+		[_] 25% Set Pin Mode (\xF4..)
+			[X] 100% Strawman method to send these commands.
+				[X] 100% $device->digital_in(PORT);
+				[X] 100% $device->digital_out(PORT);
+				[X] 100% $device->analog_in(PORT);
+				[X] 100% $device->pwm_out(PORT);
+				[X] 100% $device->servo_out(PORT);
+			[_] 0% Settle on final APIs for this.
+			[_] 0% Store last values in the object.
+			[_] 0% Validate port can perform the reqested action.
+	[_] 0% Additional API
+		[_] 0% Generic requirements
+			[_] 0% Pin commands must be validated against capabilities.
+		[_] 0% Pin naming
+			[_] 0% Strawman API
+				$device->pin_name( 13, "onboard_led" );
+				$device->pin_name( 13, undef );
+			[_] 0% Decide upon a final API
+		[_] 0% Pin Status
+			[_] 0% Strawman API
+				[_] 0% $device->pin_get(13);
+				[_] 0% $device->pin_stream(13);
+			[_] 0% Decide upon a final API.

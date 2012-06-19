@@ -58,15 +58,16 @@ while (defined( my $e = $device->next() )) {
 		#$device->digital_report(0, 1);
 
 		# Pins 12 and 13 are digital output.
-		$device->digital_out(12);
-		$device->digital_out(13);
+		#$device->digital_out(12);
+		#$device->digital_out(13);
 
 		# Read digital input on pin 7.
 		# Wire one of pins 12 or 13 to pin 7, and watch it register input
 		# as that port lights up.
 
-		$device->digital_in(7);
-		$device->digital_report(0, 1 << 6);
+		$device->digital_in($_) for 0..15;
+		$device->digital_report(0, 0x7f);
+		$device->digital_report(1, 0x7f);
 
 		# Some silly sample rate.
 		# It may only be for analog?

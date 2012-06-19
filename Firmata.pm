@@ -19,10 +19,18 @@ with 'Reflex::Role::Streaming' => {
 	cb_closed   => make_terminal_emitter(on_closed => "closed"),
 };
 
+has init_wait => ( isa => 'Num', is => 'rw', default => 10 );
+has init_wait_autostart => ( isa => 'Bool', is => 'ro', default => 0 );
+with 'Reflex::Role::Timeout' => {
+	att_delay      => 'init_wait',
+	att_auto_start => 'init_wait_autostart',
+};
+
 has buffer => ( isa => 'Str', is => 'rw', default => '' );
 
 # Whee.
-emits protocol_version => ( is => 'rw', isa => 'Num', default => 0 );
+emits protocol_version => ( is => 'rw', isa => 'Num' );
+emits protocol_string  => ( is => 'rw', isa => 'Str' );
 
 {
 	package Firmata::Pin;
@@ -38,6 +46,12 @@ has pins => (
 	isa => 'ArrayRef[Maybe[Firmata::Pin]]',
 	default => sub { [] },
 );
+
+sub on_handle_error {
+	my ($self, $arg) = @_;
+	use YAML;
+	warn YAML::Dump($arg);
+}
 
 before put_handle => sub {
 	my ($self, $message) = @_;
@@ -136,7 +150,15 @@ sub on_handle_data {
 
 		if ($buffer =~ s/^\xF9(..)//s) {
 			my ($maj, $min) = unpack("CC", $1);
-			$self->protocol_version("$maj.$min");
+			my $new_version = "$maj.$min";
+
+			my $old_version = $self->protocol_version();
+			if (defined $old_version) {
+				next if $old_version == $new_version;
+				warn "Version changed from $old_version to $new_version";
+			}
+
+			$self->protocol_version($new_version);
 			next;
 		}
 
@@ -144,15 +166,33 @@ sub on_handle_data {
 
 		if ($buffer =~ s/^\xF0\x79(..)(.*?)\xF7//s) {
 			my ($maj, $min) = unpack("CC", $1);
+			my $new_string = $self->firmata_string_parse($2);
 
-			my $string = $self->firmata_string_parse($2);
-			$self->emit(
-				event => "version",
-				args => {
-					version => "$maj.$min",
-					firmware => $string,
-				},
-			);
+			my $new_version = "$maj.$min";
+
+			my $old_version = $self->protocol_version();
+			if (defined $old_version) {
+				unless ($old_version == $new_version) {
+					warn "Version changed from $old_version to $new_version";
+					$self->protocol_version($new_version);
+				}
+			}
+			else {
+				# This one's silent.
+				$self->protocol_version($new_version);
+			}
+
+			my $old_string = $self->protocol_string();
+			if (defined $old_string) {
+				unless ($old_string eq $new_string) {
+					warn "Version string changed from '$old_string' to '$new_string'";
+					$self->protocol_string($new_string);
+				}
+			}
+			else {
+				# This one's silent.
+				$self->protocol_string($new_string);
+			}
 
 			next;
 		}
@@ -161,12 +201,14 @@ sub on_handle_data {
 
 		if ($buffer =~ s/^\xF0\x71(.*?)\xF7//s) {
 			my $string = $self->firmata_string_parse($1);
+if (0) {
 			$self->emit(
 				event => "string",
 				args => {
 					string => $string,
 				},
 			);
+}
 			next;
 		}
 
@@ -213,9 +255,10 @@ sub on_handle_data {
 			# with emits/observes traits and all.  Problem is, we need to
 			# build those attributes at runtime after the object has been
 			# running for a little while.
+
 			$self->emit(
-				event => "capabilities",
-				args  => { }, # TODO
+				event => "initialized",
+				args  => { }, # TODO - What?!
 			);
 
 			next;
@@ -233,7 +276,7 @@ sub on_handle_data {
 			my $port = ord($1) & 0x0F;
 			my ($lsb, $msb) = unpack "CC", $2;
 			my $value = (($msb & 0x7F) << 7) | ($lsb & 0x7F);
-
+if (0) {
 			$self->emit(
 				event => "analog",
 				args  => {
@@ -241,6 +284,7 @@ sub on_handle_data {
 					value => $value,
 				},
 			);
+}
 			next;
 		}
 
@@ -248,7 +292,7 @@ sub on_handle_data {
 			my $port = ord($1) & 0x0F;
 			my ($lsb, $msb) = unpack "CC", $2;
 			my $value = (($msb & 0x7F) << 7) | ($lsb & 0x7F);
-
+if (0) {
 			$self->emit(
 				event => "digital",
 				args  => {
@@ -256,26 +300,27 @@ sub on_handle_data {
 					value => $value,
 				},
 			);
+}
 			next;
 		}
 
 		# TODO - These are Firmata commands.  Stuff we send to the device.
 		# TODO - We could handle these if we wanted to emulate a device.
-#		if ($buffer =~ s/^([\xC0-\xCF])(..)//s) {
-#			my $port = ord($1) & 0x0F;
-#			my ($lsb, $msb) = unpack "CC", $2;
-#			my $value = $lsb & 0x01;
-#			print "<-- a($port) set $value\n";
-#			next;
-#		}
+#    if ($buffer =~ s/^([\xC0-\xCF])(..)//s) {
+#      my $port = ord($1) & 0x0F;
+#      my ($lsb, $msb) = unpack "CC", $2;
+#      my $value = $lsb & 0x01;
+#      print "<-- a($port) set $value\n";
+#      next;
+#    }
 #
-#		if ($buffer =~ s/^([\xD0-\xDF])(..)//s) {
-#			my $port = ord($1) & 0x0F;
-#			my ($lsb, $msb) = unpack "CC", $2;
-#			my $value = $lsb & 0x01;
-#			print "<-- d($port) set $value\n";
-#			next;
-#		}
+#    if ($buffer =~ s/^([\xD0-\xDF])(..)//s) {
+#      my $port = ord($1) & 0x0F;
+#      my ($lsb, $msb) = unpack "CC", $2;
+#      my $value = $lsb & 0x01;
+#      print "<-- d($port) set $value\n";
+#      next;
+#    }
 
 		last;
 	}
@@ -307,6 +352,39 @@ sub hexify {
 	$data =~ s/(<[89a-fA-F][0-9a-fA-F]>)/\e[1m$1\e[0m/g;
 
 	return $data;
+}
+
+sub on_init_wait_done {
+	my ($self, $timeout) = @_;
+	$self->put_handle("\xFF");
+	$self->emit(event => "has_reset");
+}
+
+sub initialize_from_device {
+	my $self = shift;
+
+	ATTEMPT: while (1) {
+warn "attempt";
+
+		# Wait for a protocol string.
+		$self->start_init_wait();
+		my $e = $self->next('protocol_string', 'has_reset');
+		next ATTEMPT if $e->{name} eq 'has_reset';
+		$self->stop_init_wait();
+
+		# Request capabilities.
+		$self->put_handle("\xF0\x6B\xF7");
+
+		# Wait for initialization.
+		$self->start_init_wait();
+		$self->next('initialized', 'has_reset');
+		next ATTEMPT if $e->{name} eq 'has_reset';
+		$self->stop_init_wait();
+
+		last ATTEMPT;
+	}
+
+	$self->stop_init_wait();
 }
 
 1;

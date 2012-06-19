@@ -3,14 +3,21 @@ package Firmata;
 use Moose;
 extends 'Reflex::Base';
 use Reflex::Trait::EmitsOnChange qw(emits);
+use Reflex::Callbacks qw(make_emitter make_terminal_emitter);
 
 use Carp qw(croak);
 
 # TODO - This would rock more as a role.
 
 has handle => ( isa => 'FileHandle', is => 'rw' );
+has active => ( is => 'ro', isa => 'Bool', default => 1 );
 
-with 'Reflex::Role::Streaming' => { handle => 'handle' };
+with 'Reflex::Role::Streaming' => {
+	att_handle => 'handle',
+	att_active => 'active',
+	cb_error    => make_emitter(on_error => "error"),
+	cb_closed   => make_terminal_emitter(on_closed => "closed"),
+};
 
 has buffer => ( isa => 'Str', is => 'rw', default => '' );
 
@@ -115,7 +122,7 @@ sub digital_set {
 sub on_handle_data {
 	my ($self, $args) = @_;
 
-	my $buffer = $self->buffer() . $args->{data};
+	my $buffer = $self->buffer() . ($args->octets());
 
 	# TODO - Cheezy, slow.  Do better.
 

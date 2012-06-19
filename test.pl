@@ -45,13 +45,13 @@ my $blink = Reflex::Interval->new(
 
 while (defined( my $e = $device->next() )) {
 
-	if ($e->{name} eq "version") {
+	if ($e->_name() eq "version") {
 		# Request capabilities.
 		$device->put_handle("\xF0\x6B\xF7");
 		next;
 	}
 
-	if ($e->{name} eq "capabilities") {
+	if ($e->_name() eq "capabilities") {
 		#$device->analog_in( 1 );
 		#$device->analog_report( 1, 1 );
 
@@ -75,9 +75,5 @@ while (defined( my $e = $device->next() )) {
 		next;
 	}
 
-	print "--- $e->{name}\n";
-	foreach my $key (sort keys %{$e->{arg}}) {
-		next if $key eq "_sender";
-		print "$key: $e->{arg}{$key}\n";
-	}
+	print $e->dump(), "\n";
 }
